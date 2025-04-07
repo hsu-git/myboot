@@ -1,13 +1,14 @@
-# 빌드 환경 설정
-FROM gradle:7.6.1-jdk17 AS builder
+# Stage 1: Build the application
+FROM gradle:7.6.1-jdk17 AS build
 WORKDIR /app
-COPY . .
-RUN rm -rf ~/.gradle/caches/
-RUN gradle bootJar --no-daemon
+COPY build.gradle settings.gradle ./
+COPY src src
+RUN gradle build --no-daemon -x test
+RUN ls /app/build/libs/ # JAR 파일이 제대로 생성되었는지 확인
 
-# 실행 환경 설정 (작은 이미지 사용)
+# Stage 2: Create the final Docker image
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-COPY --from=builder /app/build/libs/*.jar app.jar
+COPY --from=build /app/build/libs/*.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
